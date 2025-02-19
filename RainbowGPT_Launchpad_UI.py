@@ -31,10 +31,10 @@ sql_tabs = gr.TabbedInterface(
 
 # 创建主界面
 RainbowGPT_TabbedInterface = gr.TabbedInterface(
-    [RainbowModel_Manager, knowledge_tabs, sql_tabs, RainbowStock_Analysis_UI],
-    ["Model Config", "Knowledge Agent", "SQL Agent", "Stock Analysis"],
+    [RainbowStock_Analysis_UI, RainbowModel_Manager, knowledge_tabs, sql_tabs],
+    [ "Stock Analysis", "Model Config", "Knowledge Agent", "SQL Agent"],
     theme=seafoam
 )
 
 if __name__ == "__main__":
-    RainbowGPT_TabbedInterface.queue().launch(share=True)
+    RainbowGPT_TabbedInterface.queue().launch(share=False)

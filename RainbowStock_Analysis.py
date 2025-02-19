@@ -448,6 +448,7 @@ class RainbowStock_Analysis:
 
         # 获取概念板块的数据情况
         concept_info_message=""
+        # TODO : execute in parallel
         for concept in conceptList.split(","):
             concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept,
                                                                         stock_board_ths_map_df=self.concept_name)
@@ -462,6 +463,7 @@ class RainbowStock_Analysis:
         technical_indicators_df = technical_indicators_df.to_string(index=False)
 
         # 个股新闻
+        # TODO: This will be slow
         stock_news_em_df = get_news_stock.stock_news_em(symbol=symbol, pageSize=10,
                                                         chrome_driver_path="Rainbow_utils/chromedriver.exe")
         # 删除指定列
@@ -808,7 +810,7 @@ class RainbowStock_Analysis:
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
             # 添加标题和说明
             gr.Markdown("""
-            # 🌈 RainbowGPT Stock Analysis
+            # Stock Analysis
             
             ## 📊 功能介绍
             本工具使用AI技术对A股股票进行深度分析，提供全面的投资建议和市场洞察。
@@ -826,7 +828,7 @@ class RainbowStock_Analysis:
                     with gr.Group():
                         gr.Markdown("### 🔧 基础设置")
                         http_proxy = gr.Textbox(
-                            value="http://localhost:10809",
+                            value="http://localhost:1087",
                             label="HTTP代理设置",
                             info="于Google搜索，如不需要可空"
                         )
@@ -912,16 +914,16 @@ class RainbowStock_Analysis:
                             show_label=False,
                         )
                     
-                    with gr.Group():
-                        gr.Markdown("""
-                        ### ⚠️ 免责声明
-                        1. 本工具提供的分析仅供参考，不构成投资建议
-                        2. 投资有风险，入市需谨慎
-                        3. 使用者应对自己的投资决策负责
+                    # with gr.Group():
+                    #     gr.Markdown("""
+                    #     ### ⚠️ 免责声明
+                    #     1. 本工具提供的分析仅供参考，不构成投资建议
+                    #     2. 投资有风险，入市需谨慎
+                    #     3. 使用者应对自己的投资决策负责
                         
-                        ### 📮 联系方式
-                        如有问题或建议，联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
-                        """)
+                    #     ### 📮 联系方式
+                    #     如有问题或建议，联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
+                    #     """)
 
             # 修改提按钮的处理函数
             def process_and_display(market, symbol, stock_name, start_date, end_date, concept, http_proxy):

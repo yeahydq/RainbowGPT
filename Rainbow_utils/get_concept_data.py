@@ -12,7 +12,7 @@ from io import StringIO
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from py_mini_racer import py_mini_racer
+import py_mini_racer
 from tqdm import tqdm
 
 from akshare.datasets import get_ths_js

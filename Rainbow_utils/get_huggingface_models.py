@@ -12,8 +12,8 @@ def download_model_with_proxy(model_url, cache_dir):
     print("Downloading model with proxy......")
     
     # Set proxy environment variables if needed
-    os.environ["HTTP_PROXY"] = "http://127.0.0.1:10809"
-    os.environ["HTTPS_PROXY"] = "http://127.0.0.1:10809"
+    os.environ["HTTP_PROXY"] = "http://127.0.0.1:1087"
+    os.environ["HTTPS_PROXY"] = "http://127.0.0.1:1087"
 
     # Use the http object with snapshot_download
     try:

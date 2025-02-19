@@ -5,3 +5,4 @@ logs/
 .gradio
 .sqlite3
 .chromadb/chroma.sqlite3
+__pycache__

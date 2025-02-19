@@ -36,7 +36,6 @@ class ModelConfigManager:
         self.qwen_api_key = os.getenv('DASHSCOPE_API_KEY', '')
         self.default_api_base = "https://api.chatanywhere.tech"
         
-        # 默认配置
         self.gpt_config = ModelConfig(
             model_name="gpt-4",
             api_base=self.default_api_base,
@@ -63,7 +62,8 @@ class ModelConfigManager:
             api_key=self.qwen_api_key
         )
         
-        self.active_config = self.gpt_config
+        # 默认配置
+        self.active_config = self.qwen_config
     
     def set_gpt_config(self, model_name: str, api_base: str = None, temperature: float = 0.0):
         """设置GPT模型配置"""

@@ -6,7 +6,7 @@ import urllib.parse
 import urllib.request
 import requests
 from bs4 import BeautifulSoup
-import winreg
+# import winreg
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from dotenv import load_dotenv
@@ -27,10 +27,9 @@ def get_windows_proxy():
     try:
         # 首先尝试检查代理是否可用
         test_proxies = {
-            "http": "127.0.0.1:10809",
-            "https": "127.0.0.1:10809"
-        }
-        
+        "http": os.getenv('HTTP_PROXY', "127.0.0.1:1087"),
+        "https": os.getenv('HTTPS_PROXY', "127.0.0.1:1087")
+    }
         print("Testing proxy connection...")
         print(f"Current proxy settings: {test_proxies}")
         
@@ -81,9 +80,13 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     """
     print("google_custom_search......")
     print("query:", query) 
-
+    link_data = []
+    data_without_link = []
     # Automatically detect and set system proxy
     proxies = get_windows_proxy()
+    if proxies is None:
+        print("No proxy available, returning empty results.")
+        return [], []
     
     # Create an Http object with proxy support if proxies are available
     http = httplib2.Http()
@@ -103,8 +106,6 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
 
     # Extract titles, links, and snippets
-    link_data = []
-    data_without_link = []
     search_results = results.get('items', [])
     for result in search_results:
         title = result.get('title', '')
@@ -367,7 +368,7 @@ def get_website_content(url):
     return None
 
 
-print(get_windows_proxy())
+# print(get_windows_proxy())
 if __name__ == "__main__":
     # 测试代理连接
     print("=== Testing Proxy Connection ===")

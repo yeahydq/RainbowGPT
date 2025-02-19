@@ -32,7 +32,7 @@ from langchain.chains import LLMMathChain
 from langchain.callbacks.base import BaseCallbackHandler
 from Rainbow_utils.model_config_manager import ModelConfigManager
 import asyncio
-from crawl4ai import AsyncWebCrawler, CacheMode
+from crawl4ai import AsyncWebCrawler
 
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \

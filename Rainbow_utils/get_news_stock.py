@@ -12,6 +12,9 @@ from selenium.webdriver.chrome.service import Service
 import pandas as pd
 import re
 from urllib.parse import quote
+import platform
+from bs4 import BeautifulSoup
+import requests
 
 
 def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path="") -> pd.DataFrame:
@@ -32,9 +35,6 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path
     options.add_argument('--disable-extensions')
     options.add_argument('headless')
     # 当前文件夹里chromedriver路径
-
-    service = Service(chrome_driver_path)
-    driver = webdriver.Chrome(service=service, options=options)
 
     # 构建请求参数
     params = {
@@ -65,16 +65,30 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path
     url = (f'https://search-api-web.eastmoney.com/search/jsonp?'
            f'cb=jQuery35108613950799967576_1701396301284&param={encoded_params}&_=1701396301285')
 
-    driver.get(url)
-    data_text = driver.page_source
+    # if platform.system() == "Windows":
+    #     service = Service(chrome_driver_path)
+    #     driver = webdriver.Chrome(service=service, options=options)
+    # else:
+    #     driver = webdriver.Chrome(options=options)
+
+    # driver.get(url)
+    response = requests.get(url)
+    # soup = BeautifulSoup(response.text, 'html.parser')
+    # data_text = soup.pre.get_text()
+    data_text = response.text
+    # data_text = driver.page_source
     # print(data_text)
-    pattern = re.compile(r'"bizCode"(.*?)\)</pre>', re.DOTALL)
+    # pattern = re.compile(r'"bizCode"(.*?)\)</pre>', re.DOTALL)
+    pattern = re.compile(r'"cmsArticleWebOld"(.*?)\),"searchId"', re.DOTALL)
+    pattern = re.compile(r'"cmsArticleWebOld":(\[[^\]]*\])', re.DOTALL)
+
     data_re_list = pattern.findall(data_text)
     # print(data_re_list)
     data_json = json.loads(
-        '{"bizCode"' + data_re_list[0]
+        data_re_list[0]
     )
-    temp_df = pd.DataFrame(data_json["result"]["cmsArticleWebOld"])
+    # temp_df = pd.DataFrame(data_json["result"]["cmsArticleWebOld"])
+    temp_df = pd.DataFrame(data_json)
     temp_df.rename(
         columns={
             "date": "发布时间",
