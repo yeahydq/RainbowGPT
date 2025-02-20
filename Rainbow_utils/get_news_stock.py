@@ -104,10 +104,10 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path
     temp_df["关键词"] = symbol
     temp_df = temp_df[
         [
+            "发布时间",
             "关键词",
             "新闻标题",
             "新闻内容",
-            "发布时间",
             "文章来源",
             "新闻链接",
         ]

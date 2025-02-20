@@ -253,14 +253,14 @@ class RainbowStock_Analysis:
 
         # 计算最小的均线
         column_name = f'MA_{ma_window}'
-        stock_zh_a_hist_df[column_name] = stock_zh_a_hist_df['收盘'].rolling(window=ma_window).mean()
+        stock_zh_a_hist_df[column_name] = stock_zh_a_hist_df['收盘'].rolling(window=ma_window).mean().round(6)
 
         # 计算MACD
         short_window, long_window, signal_window = macd_windows
-        stock_zh_a_hist_df['ShortEMA'] = stock_zh_a_hist_df['收盘'].ewm(span=short_window, adjust=False).mean()
-        stock_zh_a_hist_df['LongEMA'] = stock_zh_a_hist_df['收盘'].ewm(span=long_window, adjust=False).mean()
-        stock_zh_a_hist_df['MACD'] = stock_zh_a_hist_df['ShortEMA'] - stock_zh_a_hist_df['LongEMA']
-        stock_zh_a_hist_df['SIGNAL'] = stock_zh_a_hist_df['MACD'].ewm(span=signal_window, adjust=False).mean()
+        stock_zh_a_hist_df['ShortEMA'] = stock_zh_a_hist_df['收盘'].ewm(span=short_window, adjust=False).mean().round(6)
+        stock_zh_a_hist_df['LongEMA'] = stock_zh_a_hist_df['收盘'].ewm(span=long_window, adjust=False).mean().round(6)
+        stock_zh_a_hist_df['MACD'] = (stock_zh_a_hist_df['ShortEMA'] - stock_zh_a_hist_df['LongEMA']).round(6)
+        stock_zh_a_hist_df['SIGNAL'] = stock_zh_a_hist_df['MACD'].ewm(span=signal_window, adjust=False).mean().round(6)
 
         # 计算RSI
         delta = stock_zh_a_hist_df['收盘'].diff(1)
@@ -269,17 +269,17 @@ class RainbowStock_Analysis:
         avg_gain = gain.rolling(window=rsi_window, min_periods=1).mean()
         avg_loss = loss.rolling(window=rsi_window, min_periods=1).mean()
         rs = avg_gain / avg_loss
-        stock_zh_a_hist_df['RSI'] = 100 - (100 / (1 + rs))
+        stock_zh_a_hist_df['RSI'] = (100 - (100 / (1 + rs))).round(6)
 
         # 计算CCI
         TP = (stock_zh_a_hist_df['最高'] + stock_zh_a_hist_df['最低'] + stock_zh_a_hist_df['收盘']) / 3
         SMA = TP.rolling(window=cci_window, min_periods=1).mean()
         MAD = (TP - SMA).abs().rolling(window=cci_window, min_periods=1).mean()
-        stock_zh_a_hist_df['CCI'] = (TP - SMA) / (0.015 * MAD)
+        stock_zh_a_hist_df['CCI'] = ((TP - SMA) / (0.015 * MAD)).round(6)
 
         return stock_zh_a_hist_df[['日期', f'MA_{ma_window}', 'MACD', 'SIGNAL', 'RSI', 'CCI']]
 
-    def process_prompt(self, stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,stock_news_em_message,
+    def process_prompt(self, stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,stock_news_em_df,
                        stock_individual_fund_flow_df, technical_indicators_df,
                        stock_financial_analysis_indicator_df, single_industry_df, concept_info_df):
         prompt_template = """当前股票主营业务和产业的相关的历史动态:
@@ -301,7 +301,7 @@ class RainbowStock_Analysis:
         {technical_indicators_df}
 
         当前股票最近的新闻:
-        {stock_news_em_message}
+        {stock_news_em_df}
 
         当前股票历史的资金流动:
         {stock_individual_fund_flow_df}
@@ -312,11 +312,11 @@ class RainbowStock_Analysis:
         """
         prompt_filled = prompt_template.format(stock_zyjs_result_df=stock_zyjs_result_df,
                                                stock_individual_info_em_df=stock_individual_info_em_df,
-                                               stock_zh_a_hist_df=stock_zh_a_hist_df,
-                                               stock_news_em_message=stock_news_em_message,
-                                               stock_individual_fund_flow_df=stock_individual_fund_flow_df,
-                                               technical_indicators_df=technical_indicators_df,
-                                               stock_financial_analysis_indicator_df=stock_financial_analysis_indicator_df,
+                                               stock_zh_a_hist_df=stock_zh_a_hist_df.to_string(index=False),
+                                               stock_news_em_df=stock_news_em_df.drop(["文章来源", "新闻链接"], axis=1).to_string(index=False),
+                                               stock_individual_fund_flow_df=stock_individual_fund_flow_df.to_string(index=False),
+                                               technical_indicators_df=technical_indicators_df.to_string(index=False),
+                                               stock_financial_analysis_indicator_df=stock_financial_analysis_indicator_df.to_string(index=False),
                                                single_industry_df=single_industry_df,
                                                concept_info_df=concept_info_df
                                                )
@@ -475,42 +475,42 @@ class RainbowStock_Analysis:
                                                 adjust="")
         # 个股技术指标计算
         technical_indicators_df = self.calculate_technical_indicators(stock_zh_a_hist_df)
-        stock_zh_a_hist_df = stock_zh_a_hist_df.to_string(index=False)
-        technical_indicators_df = technical_indicators_df.to_string(index=False)
+        # stock_zh_a_hist_df = stock_zh_a_hist_df.to_string(index=False)
+        # technical_indicators_df = technical_indicators_df.to_string(index=False)
 
         # 个股新闻
         stock_news_em_df = get_news_stock.stock_news_em(symbol=symbol, pageSize=10,
                                                         chrome_driver_path="Rainbow_utils/chromedriver.exe")
         # 删除指定列
-        stock_news_em_df = stock_news_em_df.drop(["文章来源", "新闻链接"], axis=1)
-        stock_news_em_message = stock_news_em_df.to_string(index=False)
+        # stock_news_em_df = stock_news_em_df.drop(["文章来源", "新闻链接"], axis=1)
+        # stock_news_em_message = stock_news_em_df.to_string(index=False)
 
         # 历史的个股资金流
         stock_individual_fund_flow_df = ak.stock_individual_fund_flow(stock=symbol, market=market)
         # 转换日期列为 datetime 类型，以便进行排序
         stock_individual_fund_flow_df['日期'] = pd.to_datetime(stock_individual_fund_flow_df['日期'])
         # 按日期降序排序
-        sorted_data = stock_individual_fund_flow_df.sort_values(by='日期', ascending=False)
-        num_records = min(20, len(sorted_data))
+        stock_individual_fund_flow_df_sort = stock_individual_fund_flow_df.sort_values(by='日期', ascending=False)
+        num_records = min(20, len(stock_individual_fund_flow_df_sort))
         # 提取最近的至少20条记录，如果不足20条则提取所有记录
-        recent_data = sorted_data.head(num_records)
-        stock_individual_fund_flow_df = recent_data.to_string(index=False)
+        stock_individual_fund_flow_df = stock_individual_fund_flow_df_sort.head(num_records)
+        # stock_individual_fund_flow_df = stock_individual_fund_flow_df.to_string(index=False)
 
         # 财务指标
         stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=symbol, start_year="2023")
-        stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_df.to_string(index=False)
+        # stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_df.to_string(index=False)
 
         stock_data_dict = {
             "个股历史数据": stock_zh_a_hist_df,
             "技术指标": technical_indicators_df,
-            "个股新闻": stock_news_em_message,
+            "个股新闻": stock_news_em_df,
             "个股资金流": stock_individual_fund_flow_df,
             "财务指标": stock_financial_analysis_indicator_df,
         }
 
         # 构建最终prompt
         data_message = self.process_prompt(stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,
-                                             stock_news_em_message,
+                                             stock_news_em_df,
                                              stock_individual_fund_flow_df, technical_indicators_df,
                                              stock_financial_analysis_indicator_df, single_industry_df,
                                              concept_info_message)
@@ -905,37 +905,58 @@ class RainbowStock_Analysis:
                 # 右侧：输出区域
                 with gr.Column(scale=2):
                     with gr.Group():
-                        gr.Markdown("### 📑 分析报告")
-                        
-                        # 股票新闻
-                        stock_news = gr.Markdown(
-                            label="股票新闻",
+
+
+                        # 个股历史数据
+                        gr.Markdown("### 📈 个股历史数据")
+                        stock_history_df = gr.Dataframe(
+                            headers=["日期", "开盘", "最高", "最低", "收盘", "成交量"],
                             show_label=False,
                         )
-                                                
-                        # 添加图表显示区域
+
+                        # 技术指标
+                        gr.Markdown("### 📊 技术指标")
+                        technical_indicators_df = gr.Dataframe(
+                            headers=["日期", "MACD", "SIGNAL", "RSI"],
+                            show_label=False,
+                        )
+
+                        # 股票新闻
+                        gr.Markdown("### 📰 股票新闻")
+                        stock_news_df = gr.Dataframe(
+                            headers=["发布时间", "关键词", "新闻标题", "新闻内容", "文章来源", "新闻链接"],
+                            show_label=False,
+                        )
+
+                        # 个股资金流
+                        gr.Markdown("### 💰 个股资金流")
+                        stock_fund_flow_df = gr.Dataframe(
+                            headers=["日期", "主力净流入", "超大单净流入", "大单净流入", "中单净流入", "小单净流入"],
+                            show_label=False,
+                        )
+
+                        # 财务指标
+                        gr.Markdown("### 💹 财务指标")
+                        financial_indicators_df = gr.Dataframe(
+                            headers=["日期", "每股收益", "每股净资产", "净资产收益率", "营业收入", "净利润"],
+                            show_label=False,
+                        )
+             
+                        # 股票走势分析
+                        gr.Markdown("### 📈 股票走势分析")
                         stock_chart = gr.Plot(
                             label="股票走势分析",
                             show_label=True,
                         )
                         
-                        # 分析结果显示
+                        # 分析报告
+                        gr.Markdown("### 📑 分析报告")
                         response = gr.Markdown(
                             label="AI 分析结果",
                             value="*等待分析结果...*",
                             show_label=False,
                         )
                     
-                    # with gr.Group():
-                    #     gr.Markdown("""
-                    #     ### ⚠️ 免责声明
-                    #     1. 本工具提供的分析仅供参考，不构成投资建议
-                    #     2. 投资有风险，入市需谨慎
-                    #     3. 使用者应对自己的投资决策负责
-                        
-                    #     ### 📮 联系方式
-                    #     如有问题或建议，联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
-                    #     """)
 
             # 修改提按钮的处理函数
             def process_and_display(market, symbol, stock_name, start_date, end_date, concept, http_proxy):
@@ -955,8 +976,7 @@ class RainbowStock_Analysis:
                     'current_price': None
                 }
                 
-                stock_news_em_message=stock_data_dict.get('个股新闻', "")
-                stock_news="\n\n".join(stock_news_em_message.split('\n'))
+                # stock_news="\n\n".join(stock_news_em_message.split('\n'))
 
                 # 提取预测方向
                 direction_match = re.search(r'预测方向[：:]\s*(上涨|下跌)', analysis_result)
@@ -1008,7 +1028,14 @@ class RainbowStock_Analysis:
                     target_price=prediction_info.get('target_price')
                 )
                 
-                return chart, analysis_result, stock_news
+
+                stock_history_df = stock_data_dict.get('个股历史数据', "")
+                technical_indicators_df = stock_data_dict.get('技术指标', "")
+                stock_news_df = stock_data_dict.get('个股新闻', "")
+                stock_fund_flow_df = stock_data_dict.get('个股资金流', "")
+                financial_indicators_df = stock_data_dict.get('财务指标', "")
+
+                return chart, analysis_result, stock_history_df,technical_indicators_df, stock_news_df, stock_fund_flow_df, financial_indicators_df
             
             # 绑定提交事件
             submit_button.click(
@@ -1017,7 +1044,13 @@ class RainbowStock_Analysis:
                     market, symbol, stock_name,
                     start_date, end_date, concept, http_proxy
                 ],
-                outputs=[stock_chart, response, stock_news]
+                outputs=[stock_chart, response, 
+                        stock_history_df,
+                        technical_indicators_df,
+                        stock_news_df,
+                        stock_fund_flow_df,
+                        financial_indicators_df
+                         ]
             )
             # 添加标题和说明
             gr.Markdown("""            
