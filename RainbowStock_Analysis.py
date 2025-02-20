@@ -63,7 +63,7 @@ class RainbowStock_Analysis:
             raise
 
     def openai_async_api_call(self, instruction="You are a helpful assistant.",
-                             data_message="", request_message="", timestamp_str="", result=None, index=None, stock_name=None, stock_basic_datafile=None):
+                             data_message="", request_message="", timestamp_str="", stock_data_dict=None, result=None, index=None, stock_name=None, stock_basic_datafile=None):
         """
         使用全局配置的模型进行 API 调用
         """
@@ -279,11 +279,11 @@ class RainbowStock_Analysis:
 
         return stock_zh_a_hist_df[['日期', f'MA_{ma_window}', 'MACD', 'SIGNAL', 'RSI', 'CCI']]
 
-    def process_prompt(self, stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df, stock_news_em_df,
+    def process_prompt(self, stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,stock_news_em_message,
                        stock_individual_fund_flow_df, technical_indicators_df,
                        stock_financial_analysis_indicator_df, single_industry_df, concept_info_df):
         prompt_template = """当前股票主营业务和产业的相关的历史动态:
-        {stock_zyjs_ths_df}
+        {stock_zyjs_result_df}
 
         当前股票所在的行业资金数据:
         {single_industry_df}
@@ -301,7 +301,7 @@ class RainbowStock_Analysis:
         {technical_indicators_df}
 
         当前股票最近的新闻:
-        {stock_news_em_df}
+        {stock_news_em_message}
 
         当前股票历史的资金流动:
         {stock_individual_fund_flow_df}
@@ -310,10 +310,10 @@ class RainbowStock_Analysis:
         {stock_financial_analysis_indicator_df}
 
         """
-        prompt_filled = prompt_template.format(stock_zyjs_ths_df=stock_zyjs_ths_df,
+        prompt_filled = prompt_template.format(stock_zyjs_result_df=stock_zyjs_result_df,
                                                stock_individual_info_em_df=stock_individual_info_em_df,
                                                stock_zh_a_hist_df=stock_zh_a_hist_df,
-                                               stock_news_em_df=stock_news_em_df,
+                                               stock_news_em_message=stock_news_em_message,
                                                stock_individual_fund_flow_df=stock_individual_fund_flow_df,
                                                technical_indicators_df=technical_indicators_df,
                                                stock_financial_analysis_indicator_df=stock_financial_analysis_indicator_df,
@@ -404,6 +404,8 @@ class RainbowStock_Analysis:
         IN_Q = str(formatted_date) + "的有关" + stock_zyjs_ths_df['产品类型'].to_string(index=False) + "产品类型的新闻动态"
         IN_Q = stock_name
         print("IN_Q:",IN_Q)
+        # TODO change to use BING/MSN https://www.msn.cn/zh-cn/channel/topic/%E8%B5%84%E8%AE%AF/tp-Y_77f04c37-b63e-46b4-a990-e926f7d129ff?ocid=BingNewsLanding&nsq=%e5%b7%9d%e5%8f%91%e9%be%99%e8%9f%92
+        # or Baidu https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word=%E5%B7%9D%E5%8F%91%E9%BE%99%E8%9F%92
         custom_search_link, data_title_Summary = get_google_result.google_custom_search(IN_Q)
 
         # 提取每个文本片段的日期并存储在列表中，同时保留对应的链接
@@ -431,7 +433,7 @@ class RainbowStock_Analysis:
         # Concatenate the strings in the list into a single string
         link_datial_string = '\n'.join(link_detail_res)
 
-        stock_zyjs_ths_df = first_three_snippets + " " + link_datial_string
+        stock_zyjs_result_df = first_three_snippets + " " + link_datial_string
 
         # 个股信息查询
         stock_individual_info_em_df = ak.stock_individual_info_em(symbol=symbol)
@@ -448,11 +450,25 @@ class RainbowStock_Analysis:
 
         # 获取概念板块的数据情况
         concept_info_message=""
-        # TODO : execute in parallel
-        for concept in conceptList.split(","):
-            concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept,
-                                                                        stock_board_ths_map_df=self.concept_name)
-            concept_info_message = concept_info_message + "\n=====" + concept + ':\n' + concept_info_df.to_string(index=False)
+        # 使用 ThreadPoolExecutor 并行执行
+        concept_info_message = ""
+        concept_list = conceptList.split(",")
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_to_concept = {executor.submit(get_concept_data.stock_board_concept_info_ths, concept, self.concept_name): concept for concept in concept_list}
+            for future in concurrent.futures.as_completed(future_to_concept):
+                concept = future_to_concept[future]
+                try:
+                    concept_info_df = future.result()
+                    concept_info_message += f"\n====={concept}:\n{concept_info_df.to_string(index=False)}"
+                except Exception as e:
+                    print(f"Error processing concept {concept}: {e}")
+
+
+        # # TODO : execute in parallel
+        # for concept in conceptList.split(","):
+        #     concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept,
+        #                                                                 stock_board_ths_map_df=self.concept_name)
+        #     concept_info_message = concept_info_message + "\n=====" + concept + ':\n' + concept_info_df.to_string(index=False)
 
         # 个股历史数据查询
         stock_zh_a_hist_df = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date,
@@ -463,12 +479,11 @@ class RainbowStock_Analysis:
         technical_indicators_df = technical_indicators_df.to_string(index=False)
 
         # 个股新闻
-        # TODO: This will be slow
         stock_news_em_df = get_news_stock.stock_news_em(symbol=symbol, pageSize=10,
                                                         chrome_driver_path="Rainbow_utils/chromedriver.exe")
         # 删除指定列
         stock_news_em_df = stock_news_em_df.drop(["文章来源", "新闻链接"], axis=1)
-        stock_news_em_df = stock_news_em_df.to_string(index=False)
+        stock_news_em_message = stock_news_em_df.to_string(index=False)
 
         # 历史的个股资金流
         stock_individual_fund_flow_df = ak.stock_individual_fund_flow(stock=symbol, market=market)
@@ -485,9 +500,17 @@ class RainbowStock_Analysis:
         stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=symbol, start_year="2023")
         stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_df.to_string(index=False)
 
+        stock_data_dict = {
+            "个股历史数据": stock_zh_a_hist_df,
+            "技术指标": technical_indicators_df,
+            "个股新闻": stock_news_em_message,
+            "个股资金流": stock_individual_fund_flow_df,
+            "财务指标": stock_financial_analysis_indicator_df,
+        }
+
         # 构建最终prompt
-        data_message = self.process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df,
-                                             stock_news_em_df,
+        data_message = self.process_prompt(stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,
+                                             stock_news_em_message,
                                              stock_individual_fund_flow_df, technical_indicators_df,
                                              stock_financial_analysis_indicator_df, single_industry_df,
                                              concept_info_message)
@@ -523,13 +546,14 @@ class RainbowStock_Analysis:
         response = self.openai_async_api_call(
             instruction=instruction,
             data_message=data_message,
+            stock_data_dict=stock_data_dict,
             request_message=request_message,
             timestamp_str=timestamp_str,
             stock_name=stock_name,
             stock_basic_datafile=file_name
         )
 
-        return response
+        return response, stock_data_dict
 
     def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df, 
                            prediction_direction="up", prediction_percentage=5, target_price=None):
@@ -808,20 +832,7 @@ class RainbowStock_Analysis:
     def create_interface(self):
         """创建Gradio界面"""
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
-            # 添加标题和说明
-            gr.Markdown("""
-            # Stock Analysis
-            
-            ## 📊 功能介绍
-            本工具使用AI技术对A股股票进行深度分析，提供全面的投资建议和市场洞察。
-            
-            ### 🔍 分析维度
-            1. 主营业务和产业动态分析 2. 多维度资金流向分析 3. 财务指标深度解读 4. 市场情绪和新闻影响评估 5. 技术指标综合分析6. 具体投资建议和策略
-            
-            ### 📝 使用说明
-            1. 填写股票基本信息（市场、代码、名称） 2. 设置数据查询时间范围 3. 输入股票所属概念板块 4. 点击提交获取分析报告
-            """)
-            
+
             with gr.Row():
                 # 左侧：输入区域
                 with gr.Column(scale=1):
@@ -836,19 +847,18 @@ class RainbowStock_Analysis:
                     with gr.Group():
                         gr.Markdown("### 📈 股票信息")
                         with gr.Row():
-                            market = gr.Dropdown(
-                                choices=["sh", "sz"],
-                                label="交易市场",
-                                value="sh",
-                                info="上海证券交易所(sh) 或 深圳证券交易所(sz)"
-                            )
                             symbol = gr.Textbox(
                                 label="股票代码",
                                 placeholder="例如：600839",
                                 value="600839",
                                 info="6位数字代码"
                             )
-                        
+                            market = gr.Dropdown(
+                                choices=["sh", "sz"],
+                                label="交易市场",
+                                value="sh",
+                                info="上海交易所(sh) 或 深圳交易所(sz)"
+                            )                        
                             stock_name = gr.Textbox(
                                 label="股票名称",
                                 placeholder="例如：四川长虹",
@@ -856,20 +866,16 @@ class RainbowStock_Analysis:
                                 info="请输入完整股票名称"
                             )
 
-
-
                     with gr.Group():
                         gr.Markdown("### 📅 时间范围")
                         with gr.Row():
                             start_date = Calendar(
                                 type="string",
-                                label="Start Date",
                                 value=(datetime.now() - timedelta(days=160)).strftime('%Y-%m-%d'),
                                 info="历史数据查询起始日期"
                             )
                             end_date = Calendar(
                                 type="string",
-                                label="End Date",
                                 value=(datetime.now()).strftime('%Y-%m-%d'),
                                 info="历史数据查询结束日期"
                             )
@@ -901,6 +907,12 @@ class RainbowStock_Analysis:
                     with gr.Group():
                         gr.Markdown("### 📑 分析报告")
                         
+                        # 股票新闻
+                        stock_news = gr.Markdown(
+                            label="股票新闻",
+                            show_label=False,
+                        )
+                                                
                         # 添加图表显示区域
                         stock_chart = gr.Plot(
                             label="股票走势分析",
@@ -932,7 +944,7 @@ class RainbowStock_Analysis:
                 end_date = self.format_date(end_date,"%Y-%m-%d", '%Y%m%d')
 
                 # 获取分析结果
-                analysis_result = self.get_stock_data(market, symbol, stock_name, 
+                analysis_result, stock_data_dict = self.get_stock_data(market, symbol, stock_name, 
                                                     start_date, end_date, concept, http_proxy)
                 
                 # 使用更详细的正则表达式来提取预测信息
@@ -943,6 +955,9 @@ class RainbowStock_Analysis:
                     'current_price': None
                 }
                 
+                stock_news_em_message=stock_data_dict.get('个股新闻', "")
+                stock_news="\n\n".join(stock_news_em_message.split('\n'))
+
                 # 提取预测方向
                 direction_match = re.search(r'预测方向[：:]\s*(上涨|下跌)', analysis_result)
                 if direction_match:
@@ -993,7 +1008,7 @@ class RainbowStock_Analysis:
                     target_price=prediction_info.get('target_price')
                 )
                 
-                return chart, analysis_result
+                return chart, analysis_result, stock_news
             
             # 绑定提交事件
             submit_button.click(
@@ -1002,8 +1017,19 @@ class RainbowStock_Analysis:
                     market, symbol, stock_name,
                     start_date, end_date, concept, http_proxy
                 ],
-                outputs=[stock_chart, response]
+                outputs=[stock_chart, response, stock_news]
             )
-
+            # 添加标题和说明
+            gr.Markdown("""            
+            ### 📊 功能介绍
+            本工具使用AI技术对A股股票进行深度分析，提供全面的投资建议和市场洞察。
+            
+            #### 🔍 分析维度
+            1. 主营业务和产业动态分析 2. 多维度资金流向分析 3. 财务指标深度解读 4. 市场情绪和新闻影响评估 5. 技术指标综合分析6. 具体投资建议和策略
+            
+            #### 📝 使用说明
+            1. 填写股票基本信息（代码） 2. 设置数据查询时间范围 3. 输入股票所属概念板块 4. 点击提交获取分析报告
+            """)
+            
     def launch(self):
         return self.interface

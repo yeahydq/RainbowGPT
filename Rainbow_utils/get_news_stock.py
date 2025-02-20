@@ -26,14 +26,14 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path
     :return: 个股新闻
     :rtype: pandas.DataFrame
     """
-    options = webdriver.ChromeOptions()
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])  # 禁止打印日志
-    options.add_argument('--ignore-certificate-errors')
-    # linux下所需参数
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-extensions')
-    options.add_argument('headless')
+    # options = webdriver.ChromeOptions()
+    # options.add_experimental_option('excludeSwitches', ['enable-logging'])  # 禁止打印日志
+    # options.add_argument('--ignore-certificate-errors')
+    # # linux下所需参数
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--disable-extensions')
+    # options.add_argument('headless')
     # 当前文件夹里chromedriver路径
 
     # 构建请求参数
@@ -79,7 +79,7 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path
     # data_text = driver.page_source
     # print(data_text)
     # pattern = re.compile(r'"bizCode"(.*?)\)</pre>', re.DOTALL)
-    pattern = re.compile(r'"cmsArticleWebOld"(.*?)\),"searchId"', re.DOTALL)
+    # pattern = re.compile(r'"cmsArticleWebOld"(.*?)\),"searchId"', re.DOTALL)
     pattern = re.compile(r'"cmsArticleWebOld":(\[[^\]]*\])', re.DOTALL)
 
     data_re_list = pattern.findall(data_text)

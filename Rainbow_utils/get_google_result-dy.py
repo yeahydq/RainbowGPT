@@ -27,9 +27,10 @@ def get_windows_proxy():
     try:
         # 首先尝试检查代理是否可用
         test_proxies = {
-        "http": os.getenv('HTTP_PROXY', "127.0.0.1:1087"),
-        "https": os.getenv('HTTPS_PROXY', "127.0.0.1:1087")
-        }  
+            "http": "127.0.0.1:1087",
+            "https": "127.0.0.1:1087"
+        }
+        
         print("Testing proxy connection...")
         print(f"Current proxy settings: {test_proxies}")
         
@@ -45,14 +46,14 @@ def get_windows_proxy():
     except requests.exceptions.ProxyError as e:
         print(f"Proxy error: {e}")
         print("Proxy server is not responding. Please check if your proxy service is running.")
-        return None
+        return test_proxies
     except requests.exceptions.RequestException as e:
         print(f"Connection error: {e}")
         print("Failed to connect using proxy. Switching to direct connection.")
-        return None
+        return test_proxies
     except Exception as e:
         print(f"Unexpected error while testing proxy: {e}")
-        return None
+        return test_proxies
 
 
 def get_published_date(item):
@@ -80,32 +81,36 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     """
     print("google_custom_search......")
     print("query:", query) 
-    link_data = []
-    data_without_link = []
+
     # Automatically detect and set system proxy
-    proxies = get_windows_proxy()
-    if proxies is None:
-        print("No proxy available, returning empty results.")
-        return [], []
-    # proxies=None
-    # Create an Http object with proxy support if proxies are available
-    http = httplib2.Http()
-    if proxies:
-        http_proxy = proxies.get('http')
-        if http_proxy:
-            proxy_info = httplib2.ProxyInfo(
-                httplib2.socks.PROXY_TYPE_HTTP,
-                http_proxy.split(':')[0],
-                int(http_proxy.split(':')[1]),
-                proxy_rdns=True
-            )
-            http = httplib2.Http(proxy_info=proxy_info)
+    try:
+        proxies = get_windows_proxy()
+    except Exception as e:
+        # TODO sometime, there is a timeline error, so we need to set the proxy manually
+        proxies = {
+            "http": "127.0.0.1:1087",
+            "https": "127.0.0.1:1087"
+        }
+    http_proxy = proxies.get('http')
+    https_proxy = proxies.get('https')
+
+    # Create an Http object with proxy support
+    proxy_info = httplib2.ProxyInfo(
+        httplib2.socks.PROXY_TYPE_HTTP,
+        http_proxy.split(':')[0],
+        int(http_proxy.split(':')[1]),
+        proxy_rdns=True
+    ) if http_proxy else None
+    # proxy_info = None
+    http = httplib2.Http(proxy_info=proxy_info) if proxy_info else httplib2.Http()
 
     # Setup Google Custom Search API service
     service = build("customsearch", "v1", developerKey=api_key, http=http)
     results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
 
     # Extract titles, links, and snippets
+    link_data = []
+    data_without_link = []
     search_results = results.get('items', [])
     for result in search_results:
         title = result.get('title', '')
@@ -225,9 +230,6 @@ def get_website_content(url):
 
     # Get system proxy settings
     proxies = get_windows_proxy()
-    if proxies is None:
-        print("No proxy available, returning empty results.")
-        return None
     print(f"Using proxy settings: {proxies}")
 
     # 增强的请求头
@@ -305,7 +307,7 @@ def get_website_content(url):
         print("Attempting to fetch content with proxy...")
         response = requests.get(
             url,
-            proxies=proxies if proxies else None,
+            # proxies=proxies if proxies else None,
             headers=headers,
             verify=False,
             timeout=10,
@@ -371,15 +373,15 @@ def get_website_content(url):
     return None
 
 
-# print(get_windows_proxy())
+print(get_windows_proxy())
 if __name__ == "__main__":
-    # # 测试代理连接
-    # print("=== Testing Proxy Connection ===")
-    # proxy_result = get_windows_proxy()
-    # print(f"Final proxy settings: {proxy_result}")
-    # print("==============================\n")
+    # 测试代理连接
+    print("=== Testing Proxy Connection ===")
+    proxy_result = get_windows_proxy()
+    print(f"Final proxy settings: {proxy_result}")
+    print("==============================\n")
 
-    google_search_results, google_search_results2 = google_custom_search("2025年02月19日新闻", GOOGLE_API_KEY,
+    google_search_results, google_search_results2 = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY,
                                                                          GOOGLE_CSE_ID)
     print("Search URLs:", google_search_results)
     
