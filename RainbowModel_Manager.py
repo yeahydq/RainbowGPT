@@ -5,7 +5,7 @@ class RainbowModelManager:
     def __init__(self):
         self.model_manager = ModelConfigManager()
         # 预定义模型列表
-        self.gpt_models = ["qwen-long","gpt-4o", "gpt-4o-mini","Custom"]
+        self.gpt_models = ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"]
         # Add Baichuan to private models
         self.private_models = ["Baichuan3-Turbo-128k", "Custom"]
         self.create_interface()

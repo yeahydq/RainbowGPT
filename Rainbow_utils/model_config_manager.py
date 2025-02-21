@@ -54,7 +54,7 @@ class ModelConfigManager:
             api_base="",  # Baichuan doesn't need api_base
             api_key=self.baichuan_api_key
         )
-        
+
         # Add Qwen config
         self.qwen_config = ModelConfig(
             model_name="qwen-long",
@@ -62,8 +62,15 @@ class ModelConfigManager:
             api_key=self.qwen_api_key
         )
         
+        # qwen-max-2024-09-19
+        self.qwen_max_config = ModelConfig(
+            model_name="qwen-max-2024-09-19",
+            api_base="",
+            api_key=self.qwen_api_key
+        )
+
         # 默认配置
-        self.active_config = self.qwen_config
+        self.active_config = self.qwen_max_config
     
     def set_gpt_config(self, model_name: str, api_base: str = None, temperature: float = 0.0):
         """设置GPT模型配置"""

@@ -63,7 +63,7 @@ class RainbowStock_Analysis:
             raise
 
     def openai_async_api_call(self, instruction="You are a helpful assistant.",
-                             data_message="", request_message="", timestamp_str="", stock_data_dict=None, result=None, index=None, stock_name=None, stock_basic_datafile=None):
+                             data_message="", request_message="", timestamp_str="", stock_data_dict=None, prompt_data_dict = None, result=None, index=None, stock_name=None, stock_basic_datafile=None):
         """
         使用全局配置的模型进行 API 调用
         """
@@ -79,7 +79,7 @@ class RainbowStock_Analysis:
             if config.model_name == "Baichuan3-Turbo-128k":
                 try:
                     # 创建Baichuan API客户端实例
-                    baichuan_client = BaichuanAPI(api_key=config.api_key)
+                    client = BaichuanAPI(api_key=config.api_key)
                     
                     # 合并instruction和message
                     combined_message = f"{instruction}\n\n{data_message}" if instruction else data_message
@@ -91,7 +91,7 @@ class RainbowStock_Analysis:
                     ]
                     
                     # 调用Baichuan API
-                    gpt_response = baichuan_client.chat_completion(
+                    gpt_response = client.chat_completion(
                         messages=messages,
                         temperature=config.temperature,
                         stream=True  # 使用流式输出
@@ -102,16 +102,16 @@ class RainbowStock_Analysis:
                 except Exception as baichuan_error:
                     error_detail = f"Baichuan API Error: {str(baichuan_error)}"
                     raise Exception(error_detail)
-            # Handle Qwen model
+            # Handle Qwen model "qwen-max-2024-09-19"
             elif config.model_name == "qwen-long":
                 try:
                     # 创建 Qwen API客户端实例
-                    qianwen_client = OpenAI(
+                    client = OpenAI(
                                         api_key=config.api_key,
                                         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
                                     )
                     # 上传文件
-                    file_object = qianwen_client.files.create(file=Path(stock_basic_datafile), purpose="file-extract")
+                    file_object = client.files.create(file=Path(stock_basic_datafile), purpose="file-extract")
 
                     # 构建消息列表
                     messages = [
@@ -122,7 +122,7 @@ class RainbowStock_Analysis:
 
                     print(file_object.id)
                     # 调用 Qwen API
-                    response = qianwen_client.chat.completions.create(
+                    response = client.chat.completions.create(
                         model=config.model_name,
                         messages=messages,
                         temperature=config.temperature,
@@ -132,7 +132,96 @@ class RainbowStock_Analysis:
                 except Exception as qwen_error:
                     error_detail = f"Qwen API Error: {str(qwen_error)}"
                     gpt_response=error_detail
-            
+            elif config.model_name == "model_split_TODO":
+                try:
+                    # 分页提交数据， 开发中。。
+                    client = OpenAI(
+                                        api_key=config.api_key,
+                                        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+                                    )
+
+                    tips_message = """
+                    由于内容太长， 所以我会把数据分成多段发送， 并以下面格式
+                    [开始分页 1/10]
+
+                    [结束分页 1/10]
+                    如何你会回答: "收到 1/10" 表示你已经收到第一段数据
+                    
+                    最后我会说 "数据发送完毕" 表示数据已经发送完毕, 你可以根据之前的数据回答问题
+
+                    """
+
+                    messages = [
+                        {"role": "system", "content": instruction},
+                        {"role": "user", "content": tips_message},
+                    ]
+                    # 介绍玩法
+                    response = client.chat.completions.create(
+                        model=config.model_name,
+                        messages=messages,
+                        temperature=config.temperature,
+                    )
+                    gpt_response = response.choices[0].message.content
+
+                    prompt_template = """
+                            [开始分页 {idx}/{totalIdx}]
+                            {msgkey}
+                            {message}
+                            [结束分页 {idx}/{totalIdx}]
+                    """
+
+                    # 投喂数据
+                    totalIdx = len(prompt_data_dict.items())
+                    idx=1
+                    for msgkey, message in prompt_data_dict.items():
+                        # 调用 Qwen API
+                        response_split = client.chat.completions.create(
+                            model=config.model_name,
+                            messages=[{
+                            "role": "user",
+                            "content": prompt_template.format(msgkey=msgkey,message=message, idx=idx, totalIdx=totalIdx),
+                            }],
+                            temperature=config.temperature,
+                        )
+                        gpt_response_split = response_split.choices[0].message.content
+                        idx += 1
+
+                    # 结束对话
+                    response = client.chat.completions.create(
+                        model=config.model_name,
+                        message = [{
+                            "role": "user",
+                            "content": request_message + "\n 数据发送完毕"}
+                        ],
+                        # messages=request_message + "\n 数据发送完毕",
+                        temperature=config.temperature,
+                    )
+                    gpt_response = response.choices[0].message.content
+
+                except Exception as qwen_error:
+                    error_detail = f"Qwen API Error: {str(qwen_error)}"
+                    gpt_response=error_detail
+            elif config.model_name == "qwen-max-2024-09-19":
+                try:
+                    # OpenAI API调用保持不变
+                    client = OpenAI(
+                        api_key=config.api_key,
+                        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+                    )
+                    
+                    response = client.chat.completions.create(
+                        model=config.model_name,
+                        messages=[
+                            {"role": "system", "content": instruction},
+                            {"role": "user", "content": data_message},
+                            {"role": "user", "content": request_message}
+                        ],
+                        temperature=config.temperature
+                    )
+                    gpt_response = response.choices[0].message.content
+                except Exception as qwen_error:
+                    error_detail = f"Qwen API Error: {str(qwen_error)}"
+                    gpt_response=error_detail
             else:
                 # OpenAI API调用保持不变
                 client = OpenAI(
@@ -282,7 +371,8 @@ class RainbowStock_Analysis:
     def process_prompt(self, stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,stock_news_em_df,
                        stock_individual_fund_flow_df, technical_indicators_df,
                        stock_financial_analysis_indicator_df, single_industry_df, concept_info_df):
-        prompt_template = """当前股票主营业务和产业的相关的历史动态:
+        prompt_template = """
+        当前股票主营业务和产业的相关的历史动态:
         {stock_zyjs_result_df}
 
         当前股票所在的行业资金数据:
@@ -320,7 +410,21 @@ class RainbowStock_Analysis:
                                                single_industry_df=single_industry_df,
                                                concept_info_df=concept_info_df
                                                )
-        return prompt_filled
+        prompt_data_dict = {
+            "当前股票主营业务和产业的相关的历史动态": stock_zyjs_result_df,
+            "当前股票所在的行业资金数据": single_industry_df,
+            "当前股票所在的概念板块的数据": concept_info_df,
+            "当前股票基本数据": stock_individual_info_em_df,
+            "当前股票历史行情数据": stock_zh_a_hist_df,
+            "当前股票的K线技术指标": technical_indicators_df,
+            "当前股票最近的新闻": stock_news_em_df,
+            "当前股票历史的资金流动": stock_individual_fund_flow_df,
+            "当前股票的财务指标数据": stock_financial_analysis_indicator_df
+
+        }
+        
+
+        return prompt_filled, prompt_data_dict
 
     def format_date(self, input_date, source_format="%Y-%m-%d", target_format_str='%Y%m%d'):
         # 将输入日期字符串解析为 datetime 对象
@@ -509,11 +613,16 @@ class RainbowStock_Analysis:
         }
 
         # 构建最终prompt
-        data_message = self.process_prompt(stock_zyjs_result_df, stock_individual_info_em_df, stock_zh_a_hist_df,
-                                             stock_news_em_df,
-                                             stock_individual_fund_flow_df, technical_indicators_df,
-                                             stock_financial_analysis_indicator_df, single_industry_df,
-                                             concept_info_message)
+        data_message, prompt_data_dict= self.process_prompt( stock_zyjs_result_df,
+                                            stock_individual_info_em_df,
+                                            stock_zh_a_hist_df,
+                                            stock_news_em_df,
+                                            stock_individual_fund_flow_df, 
+                                            technical_indicators_df,
+                                            stock_financial_analysis_indicator_df, 
+                                            single_industry_df,
+                                            concept_info_message
+                                            )
         
         request_message = (
             f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来一周该股票的价格走势做出明确的涨跌预测。\n"
@@ -547,6 +656,7 @@ class RainbowStock_Analysis:
             instruction=instruction,
             data_message=data_message,
             stock_data_dict=stock_data_dict,
+            prompt_data_dict=prompt_data_dict,
             request_message=request_message,
             timestamp_str=timestamp_str,
             stock_name=stock_name,
