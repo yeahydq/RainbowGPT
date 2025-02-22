@@ -135,6 +135,7 @@ class RainbowStock_Analysis:
             elif config.model_name == "model_split_TODO":
                 try:
                     # 分页提交数据， 开发中。。
+                    # https://github.com/Hoper-J/AI-Guide-and-Demos-zh_CN/blob/master/Guide/DeepSeek%20API%20%E5%A4%9A%E8%BD%AE%E5%AF%B9%E8%AF%9D%20-%20OpenAI%20SDK.md
                     client = OpenAI(
                                         api_key=config.api_key,
                                         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -201,12 +202,14 @@ class RainbowStock_Analysis:
                 except Exception as qwen_error:
                     error_detail = f"Qwen API Error: {str(qwen_error)}"
                     gpt_response=error_detail
-            elif config.model_name == "qwen-max-2024-09-19":
+            # elif config.model_name == "qwen-max-2024-09-19":
+            elif config.model_platform == "通义":
                 try:
                     # OpenAI API调用保持不变
                     client = OpenAI(
                         api_key=config.api_key,
-                        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+                        base_url=config.api_base
+                        # base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
                     )
                     
                     response = client.chat.completions.create(
@@ -624,6 +627,9 @@ class RainbowStock_Analysis:
                                             concept_info_message
                                             )
         
+        # Show the length of each value in prompt_data_dict
+        self.show_prompt_data_lengths(prompt_data_dict)
+
         request_message = (
             f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来一周该股票的价格走势做出明确的涨跌预测。\n"
             f"在预测中请全面考虑主营业务、基本数据、所在行业数据、所在概念板块数据、历史行情、最近新闻以及资金流动等多方面因素。\n"
@@ -664,6 +670,11 @@ class RainbowStock_Analysis:
         )
 
         return response, stock_data_dict
+
+    def show_prompt_data_lengths(self, prompt_data_dict):
+        """显示每个键的值的长度"""
+        for key, value in prompt_data_dict.items():
+            print(f"{key}: {len(str(value))} characters")
 
     def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df, 
                            prediction_direction="up", prediction_percentage=5, target_price=None):

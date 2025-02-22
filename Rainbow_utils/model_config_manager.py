@@ -7,6 +7,8 @@ from langchain_core.messages import HumanMessage
 
 @dataclass
 class ModelConfig:
+    model_platform: str
+    model_class: str
     model_name: str
     api_base: str
     api_key: str
@@ -37,12 +39,16 @@ class ModelConfigManager:
         self.default_api_base = "https://api.chatanywhere.tech"
         
         self.gpt_config = ModelConfig(
+            model_platform=None,
+            model_class=None,
             model_name="gpt-4",
             api_base=self.default_api_base,
             api_key=self.openai_api_key
         )
         
         self.private_llm_config = ModelConfig(
+            model_platform=None,
+            model_class=None,
             model_name="gpt-4-mini",
             api_base=self.default_api_base,
             api_key=""
@@ -50,27 +56,24 @@ class ModelConfigManager:
 
         # Add Baichuan config
         self.baichuan_config = ModelConfig(
+            model_platform=None,
+            model_class=None,
             model_name="Baichuan3-Turbo-128k",
             api_base="",  # Baichuan doesn't need api_base
             api_key=self.baichuan_api_key
         )
 
         # Add Qwen config
-        self.qwen_config = ModelConfig(
-            model_name="qwen-long",
-            api_base="",
-            api_key=self.qwen_api_key
-        )
-        
-        # qwen-max-2024-09-19
-        self.qwen_max_config = ModelConfig(
+        self.qwen_default_config = ModelConfig(
+            model_platform='通义',
+            model_class='通义千问-Max',
             model_name="qwen-max-2024-09-19",
-            api_base="",
+            api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
             api_key=self.qwen_api_key
         )
 
         # 默认配置
-        self.active_config = self.qwen_max_config
+        self.active_config = self.qwen_default_config
     
     def set_gpt_config(self, model_name: str, api_base: str = None, temperature: float = 0.0):
         """设置GPT模型配置"""
@@ -122,6 +125,12 @@ class ModelConfigManager:
         """Switch to Baichuan model"""
         self.active_config = self.baichuan_config
     
-    def use_qwen_model(self):
+    def use_qwen_model(self, model_platform=None, model_class=None, model_name=None):
         """Switch to Qwen model"""
-        self.active_config = self.qwen_config
+        self.active_config = ModelConfig(
+            model_platform=model_platform,
+            model_class=model_class,
+            model_name=model_name,
+            api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            api_key=self.qwen_api_key
+        )

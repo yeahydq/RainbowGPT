@@ -1,16 +1,51 @@
 import gradio as gr
 from Rainbow_utils.model_config_manager import ModelConfigManager
+import yaml
 
 class RainbowModelManager:
     def __init__(self):
         self.model_manager = ModelConfigManager()
         # 预定义模型列表
-        self.gpt_models = ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"]
+        # self.gpt_models = ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"]
+        with open('/Users/dickye/codes/RainbowGPT/model.yml', 'r') as file:
+            self.model_config = yaml.safe_load(file)
+        self.gpt_models = self.model_config.get('gpt_models', ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"])
         # Add Baichuan to private models
         self.private_models = ["Baichuan3-Turbo-128k", "Custom"]
         self.create_interface()
+
+                            # model_platform = gr.Dropdown(
+                            #     choices=self.gpt_models,
+                            #     value=self.gpt_models[0],
+                            #     info="模型平台"
+                            # )
+                            # model_class = gr.Dropdown(
+                            #     choices=self.gpt_models,
+                            #     value=self.gpt_models[0],
+                            #     info="模型种类"
+                            # )
+                            # model_version = gr.Dropdown(
+                            #     choices=self.gpt_models,
+                            #     value=self.gpt_models[0],
+                            #     info="模型版本"
+                            # )
+
+
+    def getModelPlatforms(self):
+        return list(self.model_config.get('model').keys())
     
-    def update_model_config(self, model_type, model_select, custom_model_name, api_base, api_key, temperature):
+    def getModelClasses(self, model_platform):
+        return list(self.model_config.get('model').get(model_platform).keys())
+    
+    def getModelVersions(self, model_platform, model_class):
+        return self.model_config.get('model').get(model_platform).get(model_class)
+    
+
+    def update_model_config(self, model_type,
+                            model_platform,
+                            model_class,
+                            model_select,
+                            custom_model_name, api_base, api_key, temperature):
         try:
             # 确定最终使用的模型名称
             final_model_name = custom_model_name if model_select == "Custom" and custom_model_name.strip() else model_select
@@ -24,8 +59,10 @@ class RainbowModelManager:
                     api_base=api_base if api_base.strip() else "https://api.chatanywhere.tech",
                     temperature=temperature
                 )
-                if "qwen" in final_model_name:
-                    self.model_manager.use_qwen_model()
+                if model_platform == '通义':
+                    self.model_manager.use_qwen_model(model_platform=model_platform,
+                                                      model_class = model_class,
+                                                      model_name=model_select)
                 else:
                     self.model_manager.use_gpt_model()
             else:
@@ -57,7 +94,7 @@ class RainbowModelManager:
                     f"Temperature: {active_config.temperature}")
         except Exception as e:
             return f"Error updating configuration: {str(e)}"
-    
+
     def update_model_visibility(self, model_type, custom_model_box, model_select, api_base, api_key):
         """更新界面组件的可见性和值"""
         try:
@@ -90,6 +127,19 @@ class RainbowModelManager:
             print(f"Error in update_model_visibility: {str(e)}")
             return [gr.update() for _ in range(4)]
     
+    def update_model_platform(self, model_platform):
+        return [
+            # model_class (Dropdown)
+            gr.update(choices=self.getModelClasses(model_platform), value=self.getModelClasses(model_platform)[0]),
+            # model_select (Dropdown)
+            gr.update(choices=self.getModelVersions(model_platform, self.getModelClasses(model_platform)[0]), value=self.getModelVersions(model_platform, self.getModelClasses(model_platform)[0])[0])
+        ]
+    
+    def update_model_class(self, model_platform, model_class):
+        return gr.update(
+            choices=self.getModelVersions(model_platform, model_class),
+            value=self.getModelVersions(model_platform, model_class)[0]
+        )
     def update_custom_visibility(self, model_name):
         """更新自定义模型输入框的可见性和值"""
         if model_name == "Custom":
@@ -101,7 +151,7 @@ class RainbowModelManager:
         if model_name == "Baichuan3-Turbo-128k":
             return gr.update(visible=False)
         return gr.update(visible=True)
-    
+        
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
             gr.Markdown("## Rainbow GPT Model Configuration")
@@ -116,13 +166,27 @@ class RainbowModelManager:
                     )
                     
                     with gr.Group():
-                        model_select = gr.Dropdown(
-                            choices=self.gpt_models,
-                            label="Select Model",
-                            value=self.gpt_models[0],
-                            info="选择预定义模型或自定义"
-                        )
-                        
+                        with gr.Row():
+                            model_platform = gr.Dropdown(
+                                # choices=self.getModelPlatforms(),
+                                choices=['通义', 'DeepSeek'],
+                                value=self.getModelPlatforms()[0],
+                                info="模型平台",
+                                label="模型平台"
+                            )
+                            model_class = gr.Dropdown(
+                                choices=self.getModelClasses(model_platform.value),
+                                value=self.getModelClasses(model_platform.value)[0],
+                                info="模型种类",
+                                label="模型种类"
+                            )
+                            model_select = gr.Dropdown(
+                                choices=self.getModelVersions(model_platform.value, model_class.value),
+                                value=self.getModelVersions(model_platform.value, model_class.value)[0],
+                                info="模型版本",
+                                label="模型版本"
+                            )
+
                         custom_model_box = gr.Textbox(
                             label="Custom Model Name",
                             placeholder="输入自定义模型名称",
@@ -130,7 +194,7 @@ class RainbowModelManager:
                             info="当选择Custom时可用",
                             value="models/qwen/Qwen2___5-3B-Instruct"
                         )
-                        
+                        # TODO;Auto refresh it
                         api_base = gr.Textbox(
                             value="http://172.16.0.170:8000/v1",
                             label="API Base URL",
@@ -169,7 +233,17 @@ class RainbowModelManager:
                 inputs=[model_type, custom_model_box, model_select, api_base, api_key],
                 outputs=[custom_model_box, model_select, api_base, api_key]
             )
-            
+            model_platform.change(
+                fn=self.update_model_platform,
+                inputs=[model_platform],
+                outputs=[model_class, model_select]
+            )
+            model_class.change(
+                fn=self.update_model_class,
+                inputs=[model_platform, model_class],
+                outputs=[model_select]
+            )
+
             model_select.change(
                 fn=self.update_custom_visibility,
                 inputs=[model_select],
@@ -182,6 +256,8 @@ class RainbowModelManager:
                 fn=self.update_model_config,
                 inputs=[
                     model_type,
+                    model_platform,
+                    model_class,
                     model_select,
                     custom_model_box,
                     api_base,
