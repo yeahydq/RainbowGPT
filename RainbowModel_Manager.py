@@ -7,7 +7,7 @@ class RainbowModelManager:
         self.model_manager = ModelConfigManager()
         # 预定义模型列表
         # self.gpt_models = ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"]
-        with open('/Users/dickye/codes/RainbowGPT/model.yml', 'r') as file:
+        with open('./model.yml', 'r') as file:
             self.model_config = yaml.safe_load(file)
         self.gpt_models = self.model_config.get('gpt_models', ["qwen-max-2024-09-19", "qwen-long","gpt-4o", "gpt-4o-mini","Custom"])
         # Add Baichuan to private models

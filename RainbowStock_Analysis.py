@@ -1150,11 +1150,11 @@ class RainbowStock_Analysis:
                 )
                 
 
-                stock_history_df = stock_data_dict.get('个股历史数据', "")
-                technical_indicators_df = stock_data_dict.get('技术指标', "")
-                stock_news_df = stock_data_dict.get('个股新闻', "")
+                stock_history_df = stock_data_dict.get('个股历史数据', "").sort_values(by=['日期'],ascending = False)
+                technical_indicators_df = stock_data_dict.get('技术指标', "").sort_values(by=['日期'],ascending = False)
+                stock_news_df = stock_data_dict.get('个股新闻', "").sort_values(by=['发布时间'],ascending = False)
                 stock_fund_flow_df = stock_data_dict.get('个股资金流', "")
-                financial_indicators_df = stock_data_dict.get('财务指标', "")
+                financial_indicators_df = stock_data_dict.get('财务指标', "").sort_values(by=['日期'],ascending = False)
 
                 return chart, analysis_result, stock_history_df,technical_indicators_df, stock_news_df, stock_fund_flow_df, financial_indicators_df
             
