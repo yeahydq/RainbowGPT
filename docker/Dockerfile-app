@@ -1,11 +1,13 @@
 
-FROM python:3.12-alpine-gpt
+FROM stockgpt-base:3.12-gpt
 WORKDIR /code 
 
 COPY ./ ./
 
 EXPOSE 7680
 ENV GRADIO_SERVER_NAME="0.0.0.0"
+# RUN python ./RainbowGPT_Launchpad_UI.py
+COPY ./docker/v2ray/config.json /tool/v2ray/config.json
 
-# CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-CMD ["python", "RainbowGPT_Launchpad_UI.py"]
+# CMD ["python", "RainbowGPT_Launchpad_UI.py"]
+CMD ["./docker/run.sh"]

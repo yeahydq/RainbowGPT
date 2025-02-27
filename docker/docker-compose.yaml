@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  app:
+    image: stockgpt:v1
+    ports:
+      - 7860:7860
+    # command: python ./RainbowGPT_Launchpad_UI.py
+    restart: always
+
+
+# docker compose down && docker compose up -d

@@ -22,3 +22,9 @@ COPY ./requirements-1.txt ./requirements.txt
 RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 RUN pip install --no-cache-dir -r requirements.txt # -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+COPY ./docker/v2ray/v2ray-linux-64.zip /tmp/v2ray-linux-64.zip
+RUN mkdir -p /tool/v2ray
+RUN unzip /tmp/v2ray-linux-64.zip -d /tool/v2ray
+
+ENV PATH="$PATH:/tool/v2ray"
+# COPY ./v2ray-config.json /etc/v2ray/config.json
