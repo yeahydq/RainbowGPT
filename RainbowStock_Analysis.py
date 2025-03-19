@@ -27,7 +27,10 @@ from Rainbow_utils.baichuan_api import BaichuanAPI
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-from akshare.stock_feature.stock_hist_em import code_id_map_em
+# from akshare.stock_feature.stock_hist_em import code_id_map_em
+# from akshare.index.index_zh_em import index_code_id_map_em as code_id_map_em  // This is limit on the result, only up to 1672 records
+from akshare.bond.bond_zh_cov import _code_id_map as code_id_map_em
+
 from gradio_calendar import Calendar
 from datetime import timedelta
 from pathlib import Path

@@ -7,7 +7,7 @@ openai==1.58.1
 dashscope
 python-dotenv
 aktools
-akshare==1.16.4
+akshare==1.16.51
 selenium
 # py_mini_racer
 mini-racer
@@ -23,11 +23,15 @@ plotly
 pymysql
 readability-lxml
 tk
+
+# Remove below as not require by the stock components
 langchain==0.3.13
 langchain-community
 langchain-huggingface
 sentence-transformers
 langchain_openai
+
+
 aiofiles
 crawl4ai
 gradio_calendar 
